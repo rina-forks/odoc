@@ -27,20 +27,22 @@ let prefix =
   |> List.hd
 
 let all_opam_packages =
-  memoize @@ fun () ->
+  memoize @@ fun () -> (
+  (match Bos.OS.Env.var "ODOC_DRIVER_PACKAGES" with
+  Some s -> s |> String.split_on_char ',' |> List.map Fpath.of_string |> List.map Result.get_ok
+  | None ->
   let prefix = prefix () in
   match Bos.OS.Dir.contents Fpath.(v prefix / ".opam-switch" / "packages") with
   | Error (`Msg msg) ->
       Logs.err (fun m -> m "Error listing opam packages: %s" msg);
       []
-  | Ok contents ->
+  | Ok contents -> contents) |>
       List.filter_map
         (fun p ->
           let name = Fpath.basename p in
           match Astring.String.cut ~sep:"." name with
           | Some (name, version) -> Some { name; version }
-          | None -> None)
-        contents
+          | None -> None))
 
 let pkg_contents { name; _ } =
   let prefix = Fpath.v (prefix ()) in
